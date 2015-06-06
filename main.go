@@ -61,7 +61,7 @@ func rootDir() (string, error) {
 	lastdir := ""
 
 	for lastdir != dir {
-		if _, err = os.Stat(".gong"); err == nil {
+		if _, err = os.Stat(filepath.Join(dir, ".gong")); err == nil {
 			return dir, nil
 		}
 
