@@ -16,8 +16,8 @@ var (
 	ModeDirDefault os.FileMode = 0755
 )
 
-func execGo(gopath string, args ...string) int {
-	cmd := exec.Command("go", args...)
+func execCmd(gopath string, command string, args ...string) int {
+	cmd := exec.Command(command, args...)
 	cmd.Env = os.Environ()
 	for i, v := range cmd.Env {
 		if strings.HasPrefix(v, "GOPATH=") {
@@ -41,10 +41,9 @@ func execGo(gopath string, args ...string) int {
 			}
 			fmt.Printf("failed to end cleanly: %v\n", err)
 			return 2
-		} else {
-			fmt.Printf("failed to end cleanly: %v\n", err)
-			return 2
 		}
+		fmt.Printf("failed to end cleanly: %v\n", err)
+		return 2
 	}
 
 	return 0
@@ -101,13 +100,7 @@ func setup(force bool) {
 	}
 
 	// create .gong.deps/{bin,pkg,src}
-	fmt.Printf("setting up project in %s... ", rootDir)
-	gongFile, err := os.OpenFile(filepath.Join(rootDir, ".gong"), os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0644)
-	if err != nil {
-		fmt.Printf("failed! %v\n", err)
-		os.Exit(2)
-	}
-	gongFile.Close()
+	fmt.Printf("setting up .gong.deps in %s... ", rootDir)
 	if err = os.MkdirAll(filepath.Join(rootDir, ".gong.deps", "src"), ModeDirDefault); err != nil {
 		fmt.Printf("failed! %v\n", err)
 		os.Exit(2)
@@ -169,6 +162,16 @@ func setup(force bool) {
 	}
 	fmt.Printf("done.\n")
 
+	// indicate that we completed by making a .gong file
+	fmt.Printf("finalising directory... ")
+	gongFile, err := os.OpenFile(filepath.Join(rootDir, ".gong"), os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0644)
+	if err != nil {
+		fmt.Printf("failed! %v\n", err)
+		os.Exit(2)
+	}
+	gongFile.Close()
+	fmt.Printf("done.\n\n")
+
 	fmt.Printf("Setup should be completed now! Make sure to use gong as a wrapper\n")
 	fmt.Printf("to your `go` commands so that you have environment variables set correctly.\n")
 
@@ -183,13 +186,15 @@ func help(failed bool) {
 
 	fmt.Printf("Usage: gong command [args]\n\n")
 	fmt.Printf("gong subcommands:\n")
-	fmt.Printf("    setup                                  (re)Setup the project\n")
+	fmt.Printf("	setup				(re)Setup the project\n")
+	fmt.Printf("	use	[cmd...]		launch a command in the gong environment\n")
+	fmt.Printf("\n")
 	fmt.Printf("Yep, that's it! If you want to manage dependencies, you can use\n")
 	fmt.Printf("`gong get` just like `go get`, which will vendor it to your project.\n")
-	fmt.Printf("Isn't that simple?\n")
+	fmt.Printf("Your project's GOPATH is in `.gong.deps`. Isn't that simple?\n")
 	fmt.Printf("\n")
-	fmt.Printf("and of course we support all of the go commands. `go help` follows:\n")
-	execGo("", "help")
+	fmt.Printf("and of course we support all of the go commands. `go help` follows:\n\n")
+	execCmd("", "go", "help")
 
 	if failed {
 		os.Exit(2)
@@ -208,14 +213,21 @@ func main() {
 	switch cmd {
 	case "setup":
 		setup(true)
-	case "help":
+	case "use":
+		setup(false)
+		if len(os.Args) <= 2 { // only has 'gong use'
+			help(true)
+		}
+
+		retcode = execCmd(gopath(), os.Args[2], os.Args[3:]...)
+	case "help", "-h", "--help":
 		if len(os.Args) <= 2 {
 			help(false)
 		}
 		fallthrough
 	default:
 		setup(false)
-		retcode = execGo(gopath(), os.Args[1:]...)
+		retcode = execCmd(gopath(), "go", os.Args[1:]...)
 	}
 
 	os.Exit(retcode)
