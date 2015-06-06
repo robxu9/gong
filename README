@@ -1,0 +1,42 @@
+# gong
+
+gong is a wrapper around the `go` tool to allow for easy GOPATH and
+vendoring management.
+
+## why?
+vendoring has been extremely cumbersome by today's standards. things such
+as rewriting imports or placing unneeded directories shouldn't be necessary.
+
+so this takes those approaches and throws them all out the window, spits on
+them, then proceeds to make its own.
+
+## how?
+a typical project structure under gong looks like this:
+    /
+     bin/ ~> .gong.deps/bin
+     my-source-files.go
+     main.go
+     .gitignore
+     .gong
+     .gong.deps/
+        bin/
+        pkg/
+        src/
+            github.com/
+                robxu9/
+                    fabulousproject/ ~> /
+                someone/
+                    somevendordep/
+
+all commands are invoked through `gong` so that `gong` can modify the
+$GOPATH for the commands respectively. then, `gong` executes the commands
+to the `go` tool.
+
+your `$GOPATH` points to `.gong.deps`, and we define the project root as the
+directory that contains `.gong`. For example, our package name is
+"github.com/robxu9/fabulousproject`, and `gong` automatically symlinks that
+so that it's technically still in the `$GOPATH`. Now not only is your project
+`go get`table, but also gong can easily build it if you clone it yourself!
+
+## license
+MIT licensed. See robxu9.mit-license.org.
